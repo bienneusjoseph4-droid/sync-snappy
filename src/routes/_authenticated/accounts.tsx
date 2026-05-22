@@ -179,7 +179,12 @@ function AccountsPage() {
               <div><Label>Nome (opcional)</Label><Input value={displayName} onChange={e => setDisplayName(e.target.value)} className="mt-1" /></div>
               <p className="text-xs text-muted-foreground">A conexão real (cookies/sessão) será feita pelo worker externo Node.js + Playwright.</p>
             </div>
-            <DialogFooter><Button onClick={addAccount}>Adicionar</Button></DialogFooter>
+            <DialogFooter>
+              <Button onClick={addAccount} disabled={adding}>
+                {adding ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <LinkIcon className="h-4 w-4 mr-2" />}
+                {adding ? "Abrindo Chrome…" : "Adicionar e conectar"}
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
         </div>
