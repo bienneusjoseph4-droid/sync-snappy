@@ -22,6 +22,7 @@ function AccountsPage() {
   const [open, setOpen] = useState(false);
   const [username, setUsername] = useState("");
   const [displayName, setDisplayName] = useState("");
+  const [adding, setAdding] = useState(false);
   const [workerUrl, setWorkerUrl] = useState<string>(() =>
     (typeof window !== "undefined" && localStorage.getItem(WORKER_URL_KEY)) || DEFAULT_WORKER_URL,
   );
@@ -48,16 +49,45 @@ function AccountsPage() {
     if (!username.trim()) return toast.error("Informe o username");
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    const { error } = await supabase.from("tiktok_accounts").insert({
-      user_id: user.id,
-      username: username.replace(/^@/, ""),
-      display_name: displayName || null,
-      status: "pending",
-    });
-    if (error) return toast.error(error.message);
-    toast.success("Conta adicionada. Aguardando conexão do worker.");
-    setOpen(false); setUsername(""); setDisplayName("");
+    setAdding(true);
+    const cleanUsername = username.replace(/^@/, "");
+    const { data: inserted, error } = await supabase
+      .from("tiktok_accounts")
+      .insert({
+        user_id: user.id,
+        username: cleanUsername,
+        display_name: displayName || null,
+        status: "connecting",
+      })
+      .select()
+      .single();
+    if (error) {
+      setAdding(false);
+      return toast.error(error.message);
+    }
     qc.invalidateQueries({ queryKey: ["accounts"] });
+    try {
+      const res = await fetch(
+        `${workerUrl}/test?username=${encodeURIComponent(cleanUsername)}&account_id=${inserted.id}`,
+        { method: "GET", mode: "cors" },
+      );
+      if (!res.ok) throw new Error(`Worker respondeu ${res.status}`);
+      toast.success("Chrome aberto. Faça login no TikTok.", {
+        description: "Após autenticar, clique em \"Verificar\" no card da conta.",
+      });
+      setOpen(false);
+      setUsername("");
+      setDisplayName("");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Falha ao contatar worker";
+      toast.error("Worker indisponível", {
+        description: `${msg} — verifique se ${workerUrl} está rodando.`,
+      });
+      await supabase.from("tiktok_accounts").update({ status: "error" }).eq("id", inserted.id);
+    } finally {
+      qc.invalidateQueries({ queryKey: ["accounts"] });
+      setAdding(false);
+    }
   };
 
   const removeAccount = async (id: string) => {
@@ -149,7 +179,12 @@ function AccountsPage() {
               <div><Label>Nome (opcional)</Label><Input value={displayName} onChange={e => setDisplayName(e.target.value)} className="mt-1" /></div>
               <p className="text-xs text-muted-foreground">A conexão real (cookies/sessão) será feita pelo worker externo Node.js + Playwright.</p>
             </div>
-            <DialogFooter><Button onClick={addAccount}>Adicionar</Button></DialogFooter>
+            <DialogFooter>
+              <Button onClick={addAccount} disabled={adding}>
+                {adding ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <LinkIcon className="h-4 w-4 mr-2" />}
+                {adding ? "Abrindo Chrome…" : "Adicionar e conectar"}
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
         </div>
