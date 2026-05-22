@@ -7,18 +7,33 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { StatusBadge } from "@/components/StatusBadge";
-import { Plus, Trash2, Link as LinkIcon, Users } from "lucide-react";
+import { Plus, Trash2, Link as LinkIcon, Users, Loader2, RefreshCw, Settings2 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 export const Route = createFileRoute("/_authenticated/accounts")({ component: AccountsPage });
 
+const WORKER_URL_KEY = "tiktok_worker_url";
+const DEFAULT_WORKER_URL = "http://localhost:3001";
+
 function AccountsPage() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [username, setUsername] = useState("");
   const [displayName, setDisplayName] = useState("");
+  const [workerUrl, setWorkerUrl] = useState<string>(() =>
+    (typeof window !== "undefined" && localStorage.getItem(WORKER_URL_KEY)) || DEFAULT_WORKER_URL,
+  );
+  const [workerOpen, setWorkerOpen] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  const saveWorkerUrl = (url: string) => {
+    setWorkerUrl(url);
+    if (typeof window !== "undefined") localStorage.setItem(WORKER_URL_KEY, url);
+    toast.success("URL do worker salva");
+    setWorkerOpen(false);
+  };
 
   const { data: accounts = [], isLoading } = useQuery({
     queryKey: ["accounts"],
@@ -53,11 +68,54 @@ function AccountsPage() {
   };
 
   const triggerConnect = async (id: string, username: string) => {
-    toast.info("Solicitação de conexão enviada ao worker externo (placeholder)");
-    // Placeholder: external Node+Playwright worker will hit /api/connect-account
+    setBusyId(id);
     await supabase.from("tiktok_accounts").update({ status: "pending" }).eq("id", id);
     qc.invalidateQueries({ queryKey: ["accounts"] });
-    console.log("connect requested", { id, username });
+    try {
+      const res = await fetch(`${workerUrl}/test?username=${encodeURIComponent(username)}&account_id=${id}`, {
+        method: "GET",
+        mode: "cors",
+      });
+      if (!res.ok) throw new Error(`Worker respondeu ${res.status}`);
+      toast.success("Chrome aberto. Faça login no TikTok.", {
+        description: "Após autenticar, clique em \"Verificar Sessão\".",
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Falha ao contatar worker";
+      toast.error("Worker indisponível", { description: `${msg} — verifique se ${workerUrl} está rodando.` });
+      await supabase.from("tiktok_accounts").update({ status: "error" }).eq("id", id);
+      qc.invalidateQueries({ queryKey: ["accounts"] });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const verifySession = async (id: string, username: string) => {
+    setBusyId(id);
+    try {
+      const res = await fetch(`${workerUrl}/status?username=${encodeURIComponent(username)}&account_id=${id}`, {
+        method: "GET",
+        mode: "cors",
+      });
+      if (!res.ok) throw new Error(`Worker respondeu ${res.status}`);
+      const data: { connected?: boolean; display_name?: string; avatar_url?: string } = await res.json().catch(() => ({}));
+      const newStatus = data.connected ? "connected" : "disconnected";
+      await supabase
+        .from("tiktok_accounts")
+        .update({
+          status: newStatus,
+          ...(data.display_name ? { display_name: data.display_name } : {}),
+          ...(data.avatar_url ? { avatar_url: data.avatar_url } : {}),
+        })
+        .eq("id", id);
+      qc.invalidateQueries({ queryKey: ["accounts"] });
+      data.connected ? toast.success("Sessão ativa — conta conectada") : toast.warning("Sessão não encontrada");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Falha ao verificar sessão";
+      toast.error("Não foi possível verificar", { description: msg });
+    } finally {
+      setBusyId(null);
+    }
   };
 
   return (
@@ -67,6 +125,21 @@ function AccountsPage() {
           <h1 className="text-3xl font-bold tracking-tight">Contas TikTok</h1>
           <p className="text-sm text-muted-foreground mt-1">Gerencie suas contas conectadas</p>
         </div>
+        <div className="flex gap-2">
+        <Dialog open={workerOpen} onOpenChange={setWorkerOpen}>
+          <DialogTrigger asChild>
+            <Button variant="outline"><Settings2 className="h-4 w-4 mr-2" />Worker</Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader><DialogTitle>URL do Worker Playwright</DialogTitle></DialogHeader>
+            <div className="space-y-3 py-2">
+              <Label>Endpoint base</Label>
+              <Input defaultValue={workerUrl} onChange={e => setWorkerUrl(e.target.value)} placeholder="http://localhost:3001" />
+              <p className="text-xs text-muted-foreground">Endpoints esperados: <code>GET /test</code> (abre Chrome + login) e <code>GET /status</code> (retorna {`{ connected: boolean }`}).</p>
+            </div>
+            <DialogFooter><Button onClick={() => saveWorkerUrl(workerUrl)}>Salvar</Button></DialogFooter>
+          </DialogContent>
+        </Dialog>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />Adicionar conta</Button></DialogTrigger>
           <DialogContent>
@@ -79,6 +152,7 @@ function AccountsPage() {
             <DialogFooter><Button onClick={addAccount}>Adicionar</Button></DialogFooter>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {isLoading ? <p className="text-muted-foreground">Carregando…</p> : accounts.length === 0 ? (
@@ -103,12 +177,22 @@ function AccountsPage() {
               <p className="text-xs text-muted-foreground mt-4">
                 {a.last_post_at ? `Última postagem: ${format(new Date(a.last_post_at), "dd/MM HH:mm", { locale: ptBR })}` : "Nenhuma postagem ainda"}
               </p>
-              <div className="mt-4 flex gap-2">
-                <Button size="sm" variant="outline" className="flex-1" onClick={() => triggerConnect(a.id, a.username)}>
-                  <LinkIcon className="h-3.5 w-3.5 mr-1.5" />Conectar
+              <div className="mt-4 grid grid-cols-2 gap-2">
+                <Button
+                  size="sm"
+                  className="col-span-2 text-primary-foreground"
+                  style={{ background: "var(--gradient-primary)" }}
+                  disabled={busyId === a.id}
+                  onClick={() => triggerConnect(a.id, a.username)}
+                >
+                  {busyId === a.id ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <LinkIcon className="h-3.5 w-3.5 mr-1.5" />}
+                  Conectar Conta
+                </Button>
+                <Button size="sm" variant="outline" disabled={busyId === a.id} onClick={() => verifySession(a.id, a.username)}>
+                  <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${busyId === a.id ? "animate-spin" : ""}`} />Verificar
                 </Button>
                 <Button size="sm" variant="ghost" onClick={() => removeAccount(a.id)} className="text-destructive hover:text-destructive">
-                  <Trash2 className="h-4 w-4" />
+                  <Trash2 className="h-4 w-4 mr-1.5" />Remover
                 </Button>
               </div>
             </div>
