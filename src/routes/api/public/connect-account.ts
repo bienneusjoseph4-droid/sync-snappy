@@ -22,7 +22,7 @@ export const Route = createFileRoute("/api/public/connect-account")({
         if (!parsed.success) return Response.json({ error: parsed.error.flatten() }, { status: 400 });
 
         const { account_id, ...update } = parsed.data;
-        const { error } = await supabaseAdmin.from("tiktok_accounts").update(update).eq("id", account_id);
+        const { error } = await supabaseAdmin.from("tiktok_accounts").update(update as never).eq("id", account_id);
         if (error) return Response.json({ error: error.message }, { status: 500 });
         return Response.json({ ok: true });
       },

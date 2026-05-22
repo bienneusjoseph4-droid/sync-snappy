@@ -25,7 +25,7 @@ export const Route = createFileRoute("/api/public/schedule")({
         if (error_log) update.error_log = error_log;
         if (status === "posted") update.posted_at = posted_at ?? new Date().toISOString();
 
-        const { error } = await supabaseAdmin.from("scheduled_posts").update(update).eq("id", post_id);
+        const { error } = await supabaseAdmin.from("scheduled_posts").update(update as never).eq("id", post_id);
         if (error) return Response.json({ error: error.message }, { status: 500 });
         return Response.json({ ok: true });
       },
