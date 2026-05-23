@@ -45,6 +45,13 @@ function publicApiErrorResponse(error: string, status = 500): Response {
   });
 }
 
+function publicApiOptionsResponse(): Response {
+  return new Response(JSON.stringify({ success: true }), {
+    status: 200,
+    headers: API_JSON_HEADERS,
+  });
+}
+
 function isCatastrophicSsrErrorBody(body: string, responseStatus: number): boolean {
   let payload: unknown;
   try {
@@ -103,6 +110,10 @@ async function normalizeServerResponse(request: Request, response: Response): Pr
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
+      if (isPublicApiRequest(request) && request.method.toUpperCase() === "OPTIONS") {
+        return publicApiOptionsResponse();
+      }
+
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
       return await normalizeServerResponse(request, response);
