@@ -22,6 +22,7 @@ import { Route as AuthenticatedAccountsRouteImport } from './routes/_authenticat
 import { Route as ApiPublicScheduleRouteImport } from './routes/api/public/schedule'
 import { Route as ApiPublicPostsRouteImport } from './routes/api/public/posts'
 import { Route as ApiPublicConnectAccountRouteImport } from './routes/api/public/connect-account'
+import { Route as ApiPublicSplatRouteImport } from './routes/api/public/$'
 
 const RegisterRoute = RegisterRouteImport.update({
   id: '/register',
@@ -87,6 +88,11 @@ const ApiPublicConnectAccountRoute = ApiPublicConnectAccountRouteImport.update({
   path: '/api/public/connect-account',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicSplatRoute = ApiPublicSplatRouteImport.update({
+  id: '/api/public/$',
+  path: '/api/public/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -98,6 +104,7 @@ export interface FileRoutesByFullPath {
   '/posts': typeof AuthenticatedPostsRoute
   '/schedule': typeof AuthenticatedScheduleRoute
   '/settings': typeof AuthenticatedSettingsRoute
+  '/api/public/$': typeof ApiPublicSplatRoute
   '/api/public/connect-account': typeof ApiPublicConnectAccountRoute
   '/api/public/posts': typeof ApiPublicPostsRoute
   '/api/public/schedule': typeof ApiPublicScheduleRoute
@@ -112,6 +119,7 @@ export interface FileRoutesByTo {
   '/posts': typeof AuthenticatedPostsRoute
   '/schedule': typeof AuthenticatedScheduleRoute
   '/settings': typeof AuthenticatedSettingsRoute
+  '/api/public/$': typeof ApiPublicSplatRoute
   '/api/public/connect-account': typeof ApiPublicConnectAccountRoute
   '/api/public/posts': typeof ApiPublicPostsRoute
   '/api/public/schedule': typeof ApiPublicScheduleRoute
@@ -128,6 +136,7 @@ export interface FileRoutesById {
   '/_authenticated/posts': typeof AuthenticatedPostsRoute
   '/_authenticated/schedule': typeof AuthenticatedScheduleRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
+  '/api/public/$': typeof ApiPublicSplatRoute
   '/api/public/connect-account': typeof ApiPublicConnectAccountRoute
   '/api/public/posts': typeof ApiPublicPostsRoute
   '/api/public/schedule': typeof ApiPublicScheduleRoute
@@ -144,6 +153,7 @@ export interface FileRouteTypes {
     | '/posts'
     | '/schedule'
     | '/settings'
+    | '/api/public/$'
     | '/api/public/connect-account'
     | '/api/public/posts'
     | '/api/public/schedule'
@@ -158,6 +168,7 @@ export interface FileRouteTypes {
     | '/posts'
     | '/schedule'
     | '/settings'
+    | '/api/public/$'
     | '/api/public/connect-account'
     | '/api/public/posts'
     | '/api/public/schedule'
@@ -173,6 +184,7 @@ export interface FileRouteTypes {
     | '/_authenticated/posts'
     | '/_authenticated/schedule'
     | '/_authenticated/settings'
+    | '/api/public/$'
     | '/api/public/connect-account'
     | '/api/public/posts'
     | '/api/public/schedule'
@@ -183,6 +195,7 @@ export interface RootRouteChildren {
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   LoginRoute: typeof LoginRoute
   RegisterRoute: typeof RegisterRoute
+  ApiPublicSplatRoute: typeof ApiPublicSplatRoute
   ApiPublicConnectAccountRoute: typeof ApiPublicConnectAccountRoute
   ApiPublicPostsRoute: typeof ApiPublicPostsRoute
   ApiPublicScheduleRoute: typeof ApiPublicScheduleRoute
@@ -281,6 +294,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicConnectAccountRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/$': {
+      id: '/api/public/$'
+      path: '/api/public/$'
+      fullPath: '/api/public/$'
+      preLoaderRoute: typeof ApiPublicSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -311,6 +331,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
   LoginRoute: LoginRoute,
   RegisterRoute: RegisterRoute,
+  ApiPublicSplatRoute: ApiPublicSplatRoute,
   ApiPublicConnectAccountRoute: ApiPublicConnectAccountRoute,
   ApiPublicPostsRoute: ApiPublicPostsRoute,
   ApiPublicScheduleRoute: ApiPublicScheduleRoute,
@@ -318,3 +339,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
