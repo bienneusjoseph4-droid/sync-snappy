@@ -25,6 +25,22 @@ function brandedErrorResponse(): Response {
   });
 }
 
+const API_JSON_HEADERS = {
+  "content-type": "application/json; charset=utf-8",
+  "cache-control": "no-store",
+};
+
+function isPublicApiRequest(request: Request): boolean {
+  return new URL(request.url).pathname.startsWith("/api/public/");
+}
+
+function publicApiErrorResponse(error: string, status = 500): Response {
+  return new Response(JSON.stringify({ success: false, error }), {
+    status,
+    headers: API_JSON_HEADERS,
+  });
+}
+
 function isCatastrophicSsrErrorBody(body: string, responseStatus: number): boolean {
   let payload: unknown;
   try {
@@ -52,10 +68,24 @@ function isCatastrophicSsrErrorBody(body: string, responseStatus: number): boole
 
 // h3 swallows in-handler throws into a normal 500 Response with body
 // {"unhandled":true,"message":"HTTPError"} — try/catch alone never fires for those.
-async function normalizeCatastrophicSsrResponse(response: Response): Promise<Response> {
-  if (response.status < 500) return response;
+async function normalizeServerResponse(request: Request, response: Response): Promise<Response> {
+  const isPublicApi = isPublicApiRequest(request);
   const contentType = response.headers.get("content-type") ?? "";
-  if (!contentType.includes("application/json")) return response;
+
+  if (isPublicApi && response.status >= 300 && response.status < 400) {
+    return publicApiErrorResponse("API route redirected unexpectedly", 502);
+  }
+
+  if (response.status < 500) {
+    if (isPublicApi && !contentType.includes("application/json")) {
+      return publicApiErrorResponse("API route returned non-JSON response", response.status >= 400 ? response.status : 500);
+    }
+    return response;
+  }
+
+  if (!contentType.includes("application/json")) {
+    return isPublicApi ? publicApiErrorResponse("Internal API error") : response;
+  }
 
   const body = await response.clone().text();
   if (!isCatastrophicSsrErrorBody(body, response.status)) {
@@ -63,7 +93,7 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
   }
 
   console.error(consumeLastCapturedError() ?? new Error(`h3 swallowed SSR error: ${body}`));
-  return brandedErrorResponse();
+  return isPublicApi ? publicApiErrorResponse("Internal API error") : brandedErrorResponse();
 }
 
 export default {
@@ -71,9 +101,12 @@ export default {
     try {
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
-      return await normalizeCatastrophicSsrResponse(response);
+      return await normalizeServerResponse(request, response);
     } catch (error) {
       console.error(error);
+      if (isPublicApiRequest(request)) {
+        return publicApiErrorResponse("Internal API error");
+      }
       return brandedErrorResponse();
     }
   },
