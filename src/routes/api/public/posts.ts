@@ -7,6 +7,10 @@ export const Route = createFileRoute("/api/public/posts")({
   server: {
     handlers: {
       GET: async ({ request }) => {
+        const secret = request.headers.get("x-worker-secret");
+        if (!secret || secret !== process.env.WORKER_SECRET) {
+          return Response.json({ error: "Unauthorized" }, { status: 401 });
+        }
         const url = new URL(request.url);
         const status = url.searchParams.get("status") ?? "scheduled";
         const limit = Math.min(parseInt(url.searchParams.get("limit") ?? "50"), 200);
