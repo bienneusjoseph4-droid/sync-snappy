@@ -72,9 +72,22 @@ function AccountsPage() {
         { method: "GET", mode: "cors" },
       );
       if (!res.ok) throw new Error(`Worker respondeu ${res.status}`);
-      toast.success("Chrome aberto. Faça login no TikTok.", {
-        description: "Após autenticar, clique em \"Verificar\" no card da conta.",
-      });
+      const data: { success?: boolean; display_name?: string; avatar_url?: string } = await res
+        .json()
+        .catch(() => ({}));
+      if (data.success !== false) {
+        await supabase
+          .from("tiktok_accounts")
+          .update({
+            status: "connected",
+            ...(data.display_name ? { display_name: data.display_name } : {}),
+            ...(data.avatar_url ? { avatar_url: data.avatar_url } : {}),
+          })
+          .eq("id", inserted.id);
+        toast.success("Conta conectada", { description: "Sessão TikTok autenticada com sucesso." });
+      } else {
+        toast.info("Chrome aberto. Faça login no TikTok.");
+      }
       setOpen(false);
       setUsername("");
       setDisplayName("");
@@ -99,7 +112,7 @@ function AccountsPage() {
 
   const triggerConnect = async (id: string, username: string) => {
     setBusyId(id);
-    await supabase.from("tiktok_accounts").update({ status: "pending" }).eq("id", id);
+    await supabase.from("tiktok_accounts").update({ status: "connecting" }).eq("id", id);
     qc.invalidateQueries({ queryKey: ["accounts"] });
     try {
       const res = await fetch(`${workerUrl}/test?username=${encodeURIComponent(username)}&account_id=${id}`, {
@@ -107,9 +120,23 @@ function AccountsPage() {
         mode: "cors",
       });
       if (!res.ok) throw new Error(`Worker respondeu ${res.status}`);
-      toast.success("Chrome aberto. Faça login no TikTok.", {
-        description: "Após autenticar, clique em \"Verificar Sessão\".",
-      });
+      const data: { success?: boolean; display_name?: string; avatar_url?: string } = await res
+        .json()
+        .catch(() => ({}));
+      if (data.success !== false) {
+        await supabase
+          .from("tiktok_accounts")
+          .update({
+            status: "connected",
+            ...(data.display_name ? { display_name: data.display_name } : {}),
+            ...(data.avatar_url ? { avatar_url: data.avatar_url } : {}),
+          })
+          .eq("id", id);
+        qc.invalidateQueries({ queryKey: ["accounts"] });
+        toast.success("Conta conectada");
+      } else {
+        toast.info("Chrome aberto. Faça login no TikTok.");
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Falha ao contatar worker";
       toast.error("Worker indisponível", { description: `${msg} — verifique se ${workerUrl} está rodando.` });
