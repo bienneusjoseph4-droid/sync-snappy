@@ -15,6 +15,10 @@ export const Route = createFileRoute("/api/public/schedule")({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        const secret = request.headers.get("x-worker-secret");
+        if (!secret || secret !== process.env.WORKER_SECRET) {
+          return Response.json({ error: "Unauthorized" }, { status: 401 });
+        }
         let body: unknown;
         try { body = await request.json(); } catch { return Response.json({ error: "Invalid JSON" }, { status: 400 }); }
         const parsed = Schema.safeParse(body);
