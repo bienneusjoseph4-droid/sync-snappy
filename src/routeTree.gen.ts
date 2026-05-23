@@ -19,10 +19,12 @@ import { Route as AuthenticatedPostsRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedAnalyticsRouteImport } from './routes/_authenticated/analytics'
 import { Route as AuthenticatedAccountsRouteImport } from './routes/_authenticated/accounts'
+import { Route as ApiPublicUpdatePostStatusRouteImport } from './routes/api/public/updatePostStatus'
 import { Route as ApiPublicScheduleRouteImport } from './routes/api/public/schedule'
 import { Route as ApiPublicPostsRouteImport } from './routes/api/public/posts'
 import { Route as ApiPublicConnectAccountRouteImport } from './routes/api/public/connect-account'
 import { Route as ApiPublicSplatRouteImport } from './routes/api/public/$'
+import { Route as ApiPublicScheduleUpdatePostStatusRouteImport } from './routes/api/public/schedule/updatePostStatus'
 
 const RegisterRoute = RegisterRouteImport.update({
   id: '/register',
@@ -73,6 +75,12 @@ const AuthenticatedAccountsRoute = AuthenticatedAccountsRouteImport.update({
   path: '/accounts',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const ApiPublicUpdatePostStatusRoute =
+  ApiPublicUpdatePostStatusRouteImport.update({
+    id: '/api/public/updatePostStatus',
+    path: '/api/public/updatePostStatus',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicScheduleRoute = ApiPublicScheduleRouteImport.update({
   id: '/api/public/schedule',
   path: '/api/public/schedule',
@@ -93,6 +101,12 @@ const ApiPublicSplatRoute = ApiPublicSplatRouteImport.update({
   path: '/api/public/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicScheduleUpdatePostStatusRoute =
+  ApiPublicScheduleUpdatePostStatusRouteImport.update({
+    id: '/updatePostStatus',
+    path: '/updatePostStatus',
+    getParentRoute: () => ApiPublicScheduleRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -107,7 +121,9 @@ export interface FileRoutesByFullPath {
   '/api/public/$': typeof ApiPublicSplatRoute
   '/api/public/connect-account': typeof ApiPublicConnectAccountRoute
   '/api/public/posts': typeof ApiPublicPostsRoute
-  '/api/public/schedule': typeof ApiPublicScheduleRoute
+  '/api/public/schedule': typeof ApiPublicScheduleRouteWithChildren
+  '/api/public/updatePostStatus': typeof ApiPublicUpdatePostStatusRoute
+  '/api/public/schedule/updatePostStatus': typeof ApiPublicScheduleUpdatePostStatusRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -122,7 +138,9 @@ export interface FileRoutesByTo {
   '/api/public/$': typeof ApiPublicSplatRoute
   '/api/public/connect-account': typeof ApiPublicConnectAccountRoute
   '/api/public/posts': typeof ApiPublicPostsRoute
-  '/api/public/schedule': typeof ApiPublicScheduleRoute
+  '/api/public/schedule': typeof ApiPublicScheduleRouteWithChildren
+  '/api/public/updatePostStatus': typeof ApiPublicUpdatePostStatusRoute
+  '/api/public/schedule/updatePostStatus': typeof ApiPublicScheduleUpdatePostStatusRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -139,7 +157,9 @@ export interface FileRoutesById {
   '/api/public/$': typeof ApiPublicSplatRoute
   '/api/public/connect-account': typeof ApiPublicConnectAccountRoute
   '/api/public/posts': typeof ApiPublicPostsRoute
-  '/api/public/schedule': typeof ApiPublicScheduleRoute
+  '/api/public/schedule': typeof ApiPublicScheduleRouteWithChildren
+  '/api/public/updatePostStatus': typeof ApiPublicUpdatePostStatusRoute
+  '/api/public/schedule/updatePostStatus': typeof ApiPublicScheduleUpdatePostStatusRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -157,6 +177,8 @@ export interface FileRouteTypes {
     | '/api/public/connect-account'
     | '/api/public/posts'
     | '/api/public/schedule'
+    | '/api/public/updatePostStatus'
+    | '/api/public/schedule/updatePostStatus'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -172,6 +194,8 @@ export interface FileRouteTypes {
     | '/api/public/connect-account'
     | '/api/public/posts'
     | '/api/public/schedule'
+    | '/api/public/updatePostStatus'
+    | '/api/public/schedule/updatePostStatus'
   id:
     | '__root__'
     | '/'
@@ -188,6 +212,8 @@ export interface FileRouteTypes {
     | '/api/public/connect-account'
     | '/api/public/posts'
     | '/api/public/schedule'
+    | '/api/public/updatePostStatus'
+    | '/api/public/schedule/updatePostStatus'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -198,7 +224,8 @@ export interface RootRouteChildren {
   ApiPublicSplatRoute: typeof ApiPublicSplatRoute
   ApiPublicConnectAccountRoute: typeof ApiPublicConnectAccountRoute
   ApiPublicPostsRoute: typeof ApiPublicPostsRoute
-  ApiPublicScheduleRoute: typeof ApiPublicScheduleRoute
+  ApiPublicScheduleRoute: typeof ApiPublicScheduleRouteWithChildren
+  ApiPublicUpdatePostStatusRoute: typeof ApiPublicUpdatePostStatusRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -273,6 +300,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAccountsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/api/public/updatePostStatus': {
+      id: '/api/public/updatePostStatus'
+      path: '/api/public/updatePostStatus'
+      fullPath: '/api/public/updatePostStatus'
+      preLoaderRoute: typeof ApiPublicUpdatePostStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/schedule': {
       id: '/api/public/schedule'
       path: '/api/public/schedule'
@@ -301,6 +335,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/schedule/updatePostStatus': {
+      id: '/api/public/schedule/updatePostStatus'
+      path: '/updatePostStatus'
+      fullPath: '/api/public/schedule/updatePostStatus'
+      preLoaderRoute: typeof ApiPublicScheduleUpdatePostStatusRouteImport
+      parentRoute: typeof ApiPublicScheduleRoute
+    }
   }
 }
 
@@ -326,6 +367,18 @@ const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
   AuthenticatedRouteChildren,
 )
 
+interface ApiPublicScheduleRouteChildren {
+  ApiPublicScheduleUpdatePostStatusRoute: typeof ApiPublicScheduleUpdatePostStatusRoute
+}
+
+const ApiPublicScheduleRouteChildren: ApiPublicScheduleRouteChildren = {
+  ApiPublicScheduleUpdatePostStatusRoute:
+    ApiPublicScheduleUpdatePostStatusRoute,
+}
+
+const ApiPublicScheduleRouteWithChildren =
+  ApiPublicScheduleRoute._addFileChildren(ApiPublicScheduleRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
@@ -334,7 +387,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicSplatRoute: ApiPublicSplatRoute,
   ApiPublicConnectAccountRoute: ApiPublicConnectAccountRoute,
   ApiPublicPostsRoute: ApiPublicPostsRoute,
-  ApiPublicScheduleRoute: ApiPublicScheduleRoute,
+  ApiPublicScheduleRoute: ApiPublicScheduleRouteWithChildren,
+  ApiPublicUpdatePostStatusRoute: ApiPublicUpdatePostStatusRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

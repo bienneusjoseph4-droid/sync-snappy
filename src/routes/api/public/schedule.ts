@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { publicApiOptionsResponse, updatePostStatus } from "@/lib/update-post-status.server";
+import { publicApiOptionsResponse, updatePostStatus } from "@/lib/update-post-status";
 
 export const Route = createFileRoute("/api/public/schedule")({
   server: {
