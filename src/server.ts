@@ -28,6 +28,10 @@ function brandedErrorResponse(): Response {
 const API_JSON_HEADERS = {
   "content-type": "application/json; charset=utf-8",
   "cache-control": "no-store",
+  "access-control-allow-origin": "*",
+  "access-control-allow-methods": "GET, POST, PUT, PATCH, OPTIONS",
+  "access-control-allow-headers": "Content-Type, Authorization, X-Worker-Secret, x-worker-secret, Accept, Origin",
+  "access-control-max-age": "86400",
 };
 
 function isPublicApiRequest(request: Request): boolean {
