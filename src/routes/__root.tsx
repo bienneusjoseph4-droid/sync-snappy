@@ -75,11 +75,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "TikTok Scheduler Pro — Agende e automatize seus posts" },
       { name: "description", content: "Plataforma SaaS premium para agendar postagens em múltiplas contas TikTok com automação completa." },
-      { property: "og:title", content: "TikTok Scheduler Pro" },
-      { property: "og:description", content: "Agende posts em múltiplas contas TikTok automaticamente." },
+      { property: "og:title", content: "TikTok Scheduler Pro — Agende e automatize seus posts" },
+      { property: "og:description", content: "Plataforma SaaS premium para agendar postagens em múltiplas contas TikTok com automação completa." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "TikTok Scheduler Pro — Agende e automatize seus posts" },
+      { name: "twitter:description", content: "Plataforma SaaS premium para agendar postagens em múltiplas contas TikTok com automação completa." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/f0c2cf02-883d-499c-825d-95ea731b3767/id-preview-538e55fb--da790fc0-55b3-436d-81dc-6a91c0451bc5.lovable.app-1779425122604.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/f0c2cf02-883d-499c-825d-95ea731b3767/id-preview-538e55fb--da790fc0-55b3-436d-81dc-6a91c0451bc5.lovable.app-1779425122604.png" },
     ],
     links: [
       {
