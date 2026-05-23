@@ -49,20 +49,40 @@ function SchedulePage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Sem sessão");
       const path = `${user.id}/${Date.now()}-${file.name.replace(/[^a-z0-9.]/gi, "_")}`;
-      setProgress(15);
-      const { error: upErr } = await supabase.storage.from("videos").upload(path, file);
-      if (upErr) throw upErr;
-      setProgress(70);
+      setProgress(1);
+
+      // Real upload progress via signed upload URL + XHR
+      const { data: signed, error: signErr } = await supabase
+        .storage.from("videos").createSignedUploadUrl(path);
+      if (signErr || !signed) throw signErr ?? new Error("Falha ao iniciar upload");
+
+      await new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("PUT", signed.signedUrl, true);
+        xhr.setRequestHeader("Content-Type", file.type || "video/mp4");
+        xhr.upload.onprogress = (ev) => {
+          if (ev.lengthComputable) setProgress(Math.round((ev.loaded / ev.total) * 95));
+        };
+        xhr.onload = () => (xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(`Upload falhou (${xhr.status})`)));
+        xhr.onerror = () => reject(new Error("Erro de rede no upload"));
+        xhr.send(file);
+      });
+
+      setProgress(98);
       const { data: pub } = supabase.storage.from("videos").getPublicUrl(path);
       const scheduledAt = new Date(`${date}T${time}`).toISOString();
-      const { error } = await supabase.from("scheduled_posts").insert({
+      const isImmediate = new Date(scheduledAt).getTime() <= Date.now() + 60_000;
+      const { data: inserted, error } = await supabase.from("scheduled_posts").insert({
         user_id: user.id, account_id: accountId,
         video_url: pub.publicUrl, video_path: path,
-        title, hashtags, scheduled_at: scheduledAt, status: "scheduled",
-      });
+        title, hashtags, scheduled_at: scheduledAt,
+        status: isImmediate ? "queued" : "scheduled",
+      }).select("id").single();
       if (error) throw error;
       setProgress(100);
-      toast.success("Post agendado com sucesso!");
+      toast.success("Post enviado! O processamento continua em segundo plano.", {
+        description: `ID: ${inserted?.id.slice(0, 8)}…`,
+      });
       navigate({ to: "/posts" });
     } catch (err: any) {
       toast.error(err.message || "Erro ao agendar");
@@ -117,10 +137,17 @@ function SchedulePage() {
             <div><Label>Data</Label><Input type="date" value={date} onChange={e => setDate(e.target.value)} className="mt-1" /></div>
             <div><Label>Hora</Label><Input type="time" value={time} onChange={e => setTime(e.target.value)} className="mt-1" /></div>
           </div>
-          {progress > 0 && <Progress value={progress} />}
+          {progress > 0 && (
+            <div className="space-y-1">
+              <Progress value={progress} />
+              <p className="text-xs text-muted-foreground">
+                {progress < 98 ? `Enviando vídeo… ${progress}%` : "Finalizando…"}
+              </p>
+            </div>
+          )}
           <Button type="submit" className="w-full h-11" disabled={submitting}>
             {submitting && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-            Agendar postagem
+            {submitting ? "Enviando…" : "Agendar postagem"}
           </Button>
         </div>
       </form>

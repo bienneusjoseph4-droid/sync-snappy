@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -24,7 +24,18 @@ function PostsPage() {
       const { data } = await supabase.from("scheduled_posts").select("*, tiktok_accounts(username)").order("scheduled_at", { ascending: false });
       return data ?? [];
     },
+    refetchInterval: 5000,
   });
+
+  useEffect(() => {
+    const channel = supabase
+      .channel("scheduled_posts-changes")
+      .on("postgres_changes", { event: "*", schema: "public", table: "scheduled_posts" }, () => {
+        qc.invalidateQueries({ queryKey: ["posts"] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [qc]);
 
   const filtered = posts.filter(p => {
     if (filter !== "all" && p.status !== filter) return false;
