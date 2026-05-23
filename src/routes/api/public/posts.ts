@@ -16,6 +16,10 @@ function jsonResponse(body: unknown, init?: ResponseInit) {
   });
 }
 
+const methodNotAllowed = async () => {
+  return jsonResponse({ success: false, error: "Use GET /api/public/posts" }, { status: 405 });
+};
+
 // GET /api/public/posts — used by the external Node+Playwright worker
 // to fetch pending posts due for publication.
 export const Route = createFileRoute("/api/public/posts")({
@@ -41,9 +45,10 @@ export const Route = createFileRoute("/api/public/posts")({
         if (error) return jsonResponse({ success: false, error: error.message }, { status: 500 });
         return jsonResponse({ success: true, posts: data ?? [] });
       },
-      POST: async () => {
-        return jsonResponse({ success: false, error: "Use GET /api/public/posts" }, { status: 405 });
-      },
+      POST: methodNotAllowed,
+      PUT: methodNotAllowed,
+      PATCH: methodNotAllowed,
+      DELETE: methodNotAllowed,
     },
   },
 });
