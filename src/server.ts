@@ -28,6 +28,10 @@ function brandedErrorResponse(): Response {
 const API_JSON_HEADERS = {
   "content-type": "application/json; charset=utf-8",
   "cache-control": "no-store",
+  "access-control-allow-origin": "*",
+  "access-control-allow-methods": "GET, POST, PUT, PATCH, OPTIONS",
+  "access-control-allow-headers": "Content-Type, Authorization, X-Worker-Secret, x-worker-secret, Accept, Origin",
+  "access-control-max-age": "86400",
 };
 
 function isPublicApiRequest(request: Request): boolean {
@@ -37,6 +41,13 @@ function isPublicApiRequest(request: Request): boolean {
 function publicApiErrorResponse(error: string, status = 500): Response {
   return new Response(JSON.stringify({ success: false, error }), {
     status,
+    headers: API_JSON_HEADERS,
+  });
+}
+
+function publicApiOptionsResponse(): Response {
+  return new Response(JSON.stringify({ success: true }), {
+    status: 200,
     headers: API_JSON_HEADERS,
   });
 }
@@ -99,6 +110,10 @@ async function normalizeServerResponse(request: Request, response: Response): Pr
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
+      if (isPublicApiRequest(request) && request.method.toUpperCase() === "OPTIONS") {
+        return publicApiOptionsResponse();
+      }
+
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
       return await normalizeServerResponse(request, response);
